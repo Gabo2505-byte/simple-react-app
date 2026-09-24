@@ -1,11 +1,21 @@
 export const fetchProducts = async () => {
     try {
-        // Se define una URL por defecto si process.env.REACT_APP_API_URL es undefined
-        const baseUrl = process.env.REACT_APP_API_URL || 'https://gabriel-api-management.azure-api.net';
-        const apiKey = process.env.REACT_APP_API_KEY || '';
+        // Obtenemos el valor o usamos la URL limpia por defecto
+        let baseUrl = process.env.REACT_APP_API_URL || 'https://gabriel-api-management.azure-api.net';
+        let apiKey = process.env.REACT_APP_API_KEY || '';
 
-        // Aseguramos la ruta correcta al endpoint de productos
+        // Limpieza estricta: elimina corchetes [, ], comillas " y '
+        baseUrl = baseUrl.replace(/[\[\]"']/g, '').trim();
+        apiKey = apiKey.replace(/[\[\]"']/g, '').trim();
+
+        // Si por alguna razón la URL quedó vacía o relativa, forzamos la de APIM
+        if (!baseUrl.startsWith('http')) {
+            baseUrl = 'https://gabriel-api-management.azure-api.net';
+        }
+
         const endpoint = baseUrl.endsWith('/ProductsG') ? baseUrl : `${baseUrl}/ProductsG`;
+
+        console.log("Haciendo petición a:", endpoint); // Para verificar en consola
 
         const response = await fetch(endpoint, {
             method: "GET",
