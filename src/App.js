@@ -1,12 +1,16 @@
-// src/App.js
 import React, { useEffect, useState } from "react";
-import { fetchProducts } from "./services/api";
+import { fetchProductsPage } from "./services/api";
 import ProductCard from "./components/ProductCard";
 
 function App() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({ userDetails: "TestUser" });
+
+  // Estado de paginación (el backend numera las páginas desde 0)
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [pageInfo, setPageInfo] = useState({ totalElements: 0, totalPages: 0 });
 
   useEffect(() => {
     const getUserInfo = async () => {
@@ -22,12 +26,17 @@ function App() {
     getUserInfo();
   }, []);
 
+  // Carga la página cada vez que cambia el usuario, la página o el tamaño
   useEffect(() => {
     if (user) {
       const loadProducts = async () => {
         setLoading(true);
-        const data = await fetchProducts();
-        setProducts(data);
+        const result = await fetchProductsPage(page, size);
+        setProducts(result.products);
+        setPageInfo({
+          totalElements: result.page.totalElements,
+          totalPages: result.page.totalPages
+        });
         setLoading(false);
       };
       loadProducts();
@@ -35,7 +44,15 @@ function App() {
       setLoading(false);
       setProducts([]);
     }
-  }, [user]);
+  }, [user, page, size]);
+
+  const handleSizeChange = (event) => {
+    setSize(Number(event.target.value));
+    setPage(0); // al cambiar el tamaño volvemos a la primera página
+  };
+
+  const hasPrevious = page > 0;
+  const hasNext = page + 1 < pageInfo.totalPages;
 
   const headerStyles = {
     display: 'flex',
@@ -78,6 +95,21 @@ function App() {
     fontWeight: 'bold',
   };
 
+  const paginationStyles = {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '16px',
+    marginTop: '24px',
+    flexWrap: 'wrap'
+  };
+
+  const pageButtonStyles = (enabled) => ({
+    ...buttonStyles,
+    opacity: enabled ? 1 : 0.5,
+    cursor: enabled ? 'pointer' : 'not-allowed'
+  });
+
   return (
     <div style={{ fontFamily: "Arial, sans-serif" }}>
       <header style={headerStyles}>
@@ -102,9 +134,48 @@ function App() {
           ) : (
             <div>
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center" }}>
-                {products.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+                {products.length > 0 ? (
+                  products.map((product, index) => (
+                    <ProductCard key={product.id || index} product={product} />
+                  ))
+                ) : (
+                  <p style={{ textAlign: "center", color: "gray", width: "100%" }}>
+                    No se encontraron productos o hubo un error al cargarlos. Revisa la consola (F12).
+                  </p>
+                )}
+              </div>
+
+              {/* Controles de paginación */}
+              <div style={paginationStyles}>
+                <button
+                  style={pageButtonStyles(hasPrevious)}
+                  onClick={() => setPage(page - 1)}
+                  disabled={!hasPrevious}
+                >
+                  Anterior
+                </button>
+
+                <span style={{ fontWeight: 'bold' }}>
+                  Página {pageInfo.totalPages === 0 ? 0 : page + 1} de {pageInfo.totalPages}
+                  {" "}({pageInfo.totalElements} productos)
+                </span>
+
+                <button
+                  style={pageButtonStyles(hasNext)}
+                  onClick={() => setPage(page + 1)}
+                  disabled={!hasNext}
+                >
+                  Siguiente
+                </button>
+
+                <label>
+                  Por página:{" "}
+                  <select value={size} onChange={handleSizeChange}>
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                  </select>
+                </label>
               </div>
             </div>
           )
